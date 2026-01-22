@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Basswala Mascot Animation — demo</title>
+  <style>html,body{height:100%;margin:0}canvas{display:block}</style>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.152.2/build/three.module.js';
+import { STLLoader } from 'https://unpkg.com/three@0.152.2/examples/jsm/loaders/STLLoader.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.152.2/examples/jsm/controls/OrbitControls.js';
+
+// SIMPLE TIMELINE STATES
+const STATE_WALK_IN = 0;
+const STATE_WAVE = 1;
+const STATE_LOGO_DROP = 2;
+const STATE_IDLE = 3;
+
+let state = STATE_WALK_IN;
+let clock = new THREE.Clock();
+let scene, camera, renderer, controls;
+let mascot, logoMesh;
+let walkDuration = 2.2; // seconds to move from edge to center
+let waveDuration = 2.0; // seconds of waving
+let logoDropDuration = 1.4;
+
+init();
+animate();
+
+function init(){
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x071028);
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+  camera.position.set(0, 1.2, 4);
+
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.enablePan = false;
+
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+  hemi.position.set(0,2,0);
+  scene.add(hemi);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+  dir.position.set(3,5,2);
+  scene.add(dir);
+
+  // ground reflection plane
+  const groundMat = new THREE.MeshStandardMaterial({color:0x050617, metalness:0.2, roughness:0.6});
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(20,20), groundMat);
+  ground.rotation.x = -Math.PI/2;
+  ground.position.y = -0.01;
+  scene.add(ground);
+
+  // load mascot STL (expects mascot.stl in same folder)
+  const loader = new STLLoader();
+  loader.load(
+    // try multiple common filenames
+    'mascot.stl',
+    function(geom){
+      const mat = new THREE.MeshStandardMaterial({color:0xffffff, metalness:0.1, roughness:0.6});
+      mascot = new THREE.Mesh(geom, mat);
+      geom.computeVertexNormals();
+      mascot.castShadow = true;
+      // center and scale
+      const box = new THREE.Box3().setFromObject(mascot);
+      const size = new THREE.Vector3(); box.getSize(size);
+      const maxDim = Math.max(size.x,size.y,size.z);
+      const scale = 1.2 / maxDim;
+      mascot.scale.setScalar(scale);
+      box.setFromObject(mascot);
+      box.getCenter(mascot.position).multiplyScalar(-1);
+      mascot.position.y = 0; // will adjust after centering
+
+      // place mascot at left-center edge (x negative)
+      mascot.position.x = -2.8;
+      mascot.position.y = 0.0;
+      mascot.rotation.y = Math.PI*0.08;
+      scene.add(mascot);
+    },
+    undefined,
+    function(err){
+      console.error('Failed to load mascot.stl — make sure the file is in same folder and named mascot.stl', err);
+    }
+  );
+
+  // Create logo plane and try multiple filenames
+  const texLoader = new THREE.TextureLoader();
+  const logoNames = ['logo.png','logo.jpg','logo orignal.jpg','logo_orignal.jpg','logo.png'];
+  let tried = 0;
+  function tryLoadLogo(){
+    if(tried>=logoNames.length){
+      // fallback: simple colored circle
+      const geometry = new THREE.CircleGeometry(0.45, 32);
+      const mat = new THREE.MeshStandardMaterial({color:0x00b4ff, metalness:0.2, roughness:0.5});
+      logoMesh = new THREE.Mesh(geometry, mat);
+      logoMesh.position.set(0,4,0);
+      scene.add(logoMesh);
+      return;
+    }
+    const name = logoNames[tried++];
+    texLoader.load(name, (tex)=>{
+      const aspect = tex.image.width/tex.image.height;
+      const h = 0.9;
+      const w = h * aspect;
+      const geom = new THREE.PlaneGeometry(w,h);
+      const mat = new THREE.MeshStandardMaterial({map:tex, transparent:true});
+      logoMesh = new THREE.Mesh(geom, mat);
+      logoMesh.position.set(0,4,0);
+      scene.add(logoMesh);
+    }, undefined, ()=>{ tryLoadLogo(); });
+  }
+  tryLoadLogo();
+
+  window.addEventListener('resize', onWindowResize);
+}
+
+function onWindowResize(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+let startTime = performance.now()/1000;
+let waveStart = 0;
+let logoStart = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  if(mascot){
+    if(state === STATE_WALK_IN){
+      const localT = Math.min(1, t / walkDuration);
+      // easeInOut
+      const ease = localT<0.5 ? 2*localT*localT : -1 + (4-2*localT)*localT;
+      mascot.position.x = -2.8*(1 - ease);
+      mascot.position.y = Math.abs(Math.sin(localT*Math.PI*2))*0.08; // bob up and down
+      mascot.rotation.y = Math.PI*0.08 + Math.sin(localT*Math.PI*2)*0.04;
+      if(localT>=1){ state = STATE_WAVE; waveStart = t; }
+    } else if(state === STATE_WAVE){
+      const localT = (t - waveStart)/waveDuration;
+      // waving simulated by rotating the whole model side-to-side and a little lift
+      mascot.rotation.z = Math.sin(localT*Math.PI*6)*0.12;
+      mascot.position.y = 0.05 + Math.abs(Math.sin(localT*Math.PI*6))*0.04;
+      if(localT>=1){ state = STATE_LOGO_DROP; logoStart = t; }
+    } else if(state === STATE_IDLE){
+      // gentle idle breathing
+      mascot.rotation.z = Math.sin(t*0.6)*0.03;
+      mascot.position.y = Math.abs(Math.sin(t*0.8))*0.02;
+    }
+  }
+
+  if(logoMesh){
+    if(state === STATE_LOGO_DROP){
+      const localT = Math.min(1, (t - logoStart)/logoDropDuration);
+      // drop from top (y ~ 4) to center (y ~ 1.1)
+      const startY = 4.2;
+      const endY = 1.05;
+      // easeOutBounce-like using cubic
+      const ease = 1 - Math.pow(1-localT,3);
+      logoMesh.position.y = startY*(1-ease) + endY*ease;
+      // swinging: small rotation with easing in
+      const swing = Math.sin(localT*6.0)*(1-localT)*0.35;
+      logoMesh.rotation.z = swing;
+      if(localT>=1){ state = STATE_IDLE; }
+    } else if(state === STATE_IDLE){
+      // slow pendulum swing
+      logoMesh.rotation.z = Math.sin((t-logoStart)*1.2)*0.06;
+    }
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+</script>
+
+<!-- Instructions -->
+<!--
+  How to use:
+  1) Place this HTML file in a folder with your mascot STL named exactly: mascot.stl
+  2) Place your logo image in the same folder named one of: logo.png, logo.jpg, logo orignal.jpg, logo_orignal.jpg
+     (the page will try these names in order). If you have a different name, rename it.
+  3) Serve this folder with a local static server (recommended) or open the file in a modern browser.
+     Example local server: `npx serve` or `python -m http.server 8000` then open http://localhost:8000/mascot_animation.html
+
+  Notes / limitations:
+  - STL is an un-animated mesh format. Without a rig/armature we cannot animate separate limbs. This demo simulates
+    walking and waving using whole-mesh transforms (position, rotation, bobbing). For true limb animation you need
+    a rigged character (GLTF with bones) and a tool like Blender (to rig/animate) or export as glTF with skinning.
+  - This is a lightweight browser demo using Three.js; it runs on desktop and modern mobile browsers.
+-->
+
+</body>
+</html>
