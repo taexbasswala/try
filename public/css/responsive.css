@@ -1,0 +1,41 @@
+/* Responsive Design Breakpoints */
+
+/* Small Mobile */
+@media only screen and (max-width: 375px) {
+    /* Styles for small mobile devices */
+}
+
+/* Mobile */
+@media only screen and (min-width: 376px) and (max-width: 667px) {
+    /* Styles for mobile devices */
+}
+
+/* Tablet */
+@media only screen and (min-width: 668px) and (max-width: 1024px) {
+    /* Styles for tablets */
+}
+
+/* Desktop */
+@media only screen and (min-width: 1025px) and (max-width: 1440px) {
+    /* Styles for desktops */
+}
+
+/* Large Desktop */
+@media only screen and (min-width: 1441px) {
+    /* Styles for large desktops */
+}
+
+/* Landscape Orientation */
+@media only screen and (orientation: landscape) {
+    /* Styles for landscape orientation */
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+    /* Styles for dark mode */
+}
+
+/* Print Media */
+@media print {
+    /* Styles for print media */
+}
