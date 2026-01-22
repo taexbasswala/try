@@ -1,0 +1,58 @@
+/*
+ * Style Sheet for Premium UI Design
+ * 
+ * This stylesheet includes comprehensive styling with a muted color palette, premium brand tones, 
+ * responsive grid layouts, subtle shadows, and smooth animations for all UI components.
+ */
+
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f8f9fa; /* Light subtle background */
+    color: #343a40; /* Dark muted text color */
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+.card {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+h1, h2, h3 {
+    color: #007bff; /* Premium brand tone */
+}
+
+.button {
+    background-color: #6c757d; /* Muted button color */
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.button:hover {
+    background-color: #5a6268; /* Darker shade on hover */
+}
+
+@media (max-width: 768px) {
+    .container {
+        grid-template-columns: 1fr; /* Single column for small screens */
+    }
+}
